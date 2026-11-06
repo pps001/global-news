@@ -663,12 +663,16 @@ async function loadFeed() {
   const res = await fetch("news.json", { cache: "no-store" });
   if (!res.ok) throw new Error("news.json not found (" + res.status + ")");
   const data = await res.json();
-  let n = 0;
-  Object.entries(data.countries || {}).forEach(([iso, items]) => {
-    const c = byIso.get(iso); if (!c || !items || !items.length) return;
-    c.items = items.slice(0, 3).map(i => ({ t: i.t, s: i.s, d: fmtIso(i.d), u: i.u })); c.live = true; n++;
-  });
+  const feed = data.countries || {};
+  const n = Object.keys(feed).filter(iso => byIso.has(iso) && feed[iso] && feed[iso].length).length;
   if (!n) throw new Error("news.json has no headlines yet");
+  // Live data replaces the snapshot completely: a country missing from news.json shows nothing
+  // rather than its old 6 Nov headlines.
+  COUNTRIES.forEach(c => {
+    const items = feed[c.iso];
+    if (items && items.length) { c.items = items.slice(0, 3).map(i => ({ t: i.t, s: i.s, d: fmtIso(i.d), u: i.u })); c.live = true; }
+    else { c.items = []; c.live = false; }
+  });
   liveCount = n;
   const when = fmtIso(data.updated);
   modeEl.classList.add("live");
