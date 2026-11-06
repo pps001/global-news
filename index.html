@@ -652,9 +652,43 @@ async function liveCycle() {
   renderTicker();
   setTimeout(() => liveCycle().catch(() => {}), Math.max(60000, REFRESH_MS - (Date.now() - started)));
 }
+/* Preferred source: news.json next to this page, written every 30 minutes by the GitHub Action
+   in .github/workflows/update-news.yml. Same-site file, so the browser never blocks it. */
+const FEED_POLL_MS = 5 * 60 * 1000;
+function fmtIso(d) {
+  const t = d ? new Date(d) : null;
+  return t && !isNaN(t) ? t.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+}
+async function loadFeed() {
+  const res = await fetch("news.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("news.json not found (" + res.status + ")");
+  const data = await res.json();
+  let n = 0;
+  Object.entries(data.countries || {}).forEach(([iso, items]) => {
+    const c = byIso.get(iso); if (!c || !items || !items.length) return;
+    c.items = items.slice(0, 3).map(i => ({ t: i.t, s: i.s, d: fmtIso(i.d), u: i.u })); c.live = true; n++;
+  });
+  if (!n) throw new Error("news.json has no headlines yet");
+  liveCount = n;
+  const when = fmtIso(data.updated);
+  modeEl.classList.add("live");
+  modeText.textContent = "Live · " + n + " countries";
+  modeEl.title = "Newest articles from each country's press via GDELT, collected " + (when || "recently") + " by this site's GitHub Action.";
+  renderIndex(); refreshCards(); tickerDirty = true;
+}
+function snapshotBecause(reason) {
+  console.info("Live news unavailable, showing snapshot:", reason);
+  modeEl.title = "Showing headlines gathered on " + SNAPSHOT_DATE + ". Live news unavailable: " + reason;
+}
 async function tryLive() {
+  try {
+    await loadFeed(); renderTicker();
+    setInterval(() => loadFeed().catch(e => console.info("news.json refresh failed:", e.message)), FEED_POLL_MS);
+    return;
+  } catch (e) { console.info("No usable news.json:", e.message); }
+  // Fallback: ask GDELT straight from the browser (works only where GDELT allows it).
   try { await liveCycle(); }
-  catch (e) { console.info("Live news unavailable, showing snapshot.", e.message); }
+  catch (e) { snapshotBecause("GDELT refused requests from this page (" + e.message + "). Add the GitHub Action to fix this."); }
 }
 
 /* ---------- Background music ---------------------------------------------------------
