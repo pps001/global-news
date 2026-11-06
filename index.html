@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>World News Globe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@300;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: full-bleed space scene, globe centred; news cards float beside the focused country,
+     country index on the left, headline ticker along the bottom. Single dark theme by choice. */
+  --space: #030812;
+  --ink: #e6f0ff;
+  --muted: #8ea3c2;
+  --accent: #5cc8ff;
+  --accent-soft: rgba(92, 200, 255, 0.16);
+  --panel: rgba(8, 20, 40, 0.72);
+  --line: rgba(140, 200, 255, 0.28);
+  --font-display: "Saira", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--space);
+  color: var(--ink);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#stage { position: fixed; inset: 0; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#globe { cursor: grab; touch-action: none; }
+#globe.dragging { cursor: grabbing; }
+#links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+header {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 18px 24px; pointer-events: none;
+}
+.brand { display: flex; align-items: baseline; gap: 14px; }
+.brand h1 {
+  margin: 0; font-family: var(--font-display); font-weight: 300;
+  font-size: 22px; letter-spacing: 0.32em; text-transform: uppercase;
+}
+.brand h1 b { font-weight: 600; color: var(--accent); }
+#clock { font-family: var(--font-display); color: var(--muted); font-size: 14px; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+.controls { display: flex; gap: 10px; align-items: center; pointer-events: auto; }
+.badge {
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+  color: var(--muted); background: var(--panel); white-space: nowrap;
+}
+.badge .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #e0b14a; margin-right: 7px; vertical-align: 1px; }
+.badge.live .dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+button {
+  font: 500 13px var(--font-body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+#music[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button:focus-visible, .chip:focus-visible, .tick a:focus-visible, .card a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#index {
+  position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 4px; max-height: 70%; overflow-y: auto;
+  padding-right: 6px;
+}
+#index .label { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.24em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.chip {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  font: 400 13px var(--font-body); color: var(--muted);
+  background: transparent; border: 0; border-left: 2px solid transparent;
+  border-radius: 0; padding: 4px 10px; cursor: pointer;
+}
+.chip .code { font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: 0.1em; color: var(--accent); width: 30px; }
+.chip .n { margin-left: auto; font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.chip:hover { color: var(--ink); }
+.chip.on { color: var(--ink); border-left-color: var(--accent); background: var(--accent-soft); }
+
+.card {
+  position: absolute; width: 340px; max-width: calc(100vw - 32px);
+  background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 16px 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  opacity: 0; transform: translateY(8px) scale(0.98);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.card.show { opacity: 1; transform: none; }
+.card .top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.card .code { font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.14em; color: var(--space); background: var(--accent); padding: 1px 6px; border-radius: 2px; }
+.card h2 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 19px; letter-spacing: 0.04em; text-wrap: balance; }
+.card ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.card li { border-top: 1px solid rgba(140, 200, 255, 0.12); padding-top: 9px; }
+.card li:first-child { border-top: 0; padding-top: 0; }
+.card a { color: var(--ink); text-decoration: none; line-height: 1.35; display: block; }
+.card li:first-child a { font-size: 16px; font-weight: 500; }
+.card li:not(:first-child) a { font-size: 13.5px; color: #c9d8ee; }
+.card a:hover { color: var(--accent); }
+.card .meta { margin-top: 3px; font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
+
+#ticker {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 40px; overflow: hidden;
+  border-top: 1px solid var(--line); background: linear-gradient(to top, rgba(3,8,18,0.95), rgba(3,8,18,0.6));
+  display: flex; align-items: center;
+}
+#ticker .tag { flex: none; height: 100%; display: flex; align-items: center; padding: 0 16px; font-family: var(--font-display); font-weight: 600; font-size: 12px; letter-spacing: 0.22em; color: var(--space); background: var(--accent); }
+#ticker .viewport { flex: 1; min-width: 0; overflow: hidden; }
+#ticker .track { width: max-content; display: flex; gap: 0; white-space: nowrap; animation: scroll 140s linear infinite; }
+#ticker:hover .track { animation-play-state: paused; }
+.tick { display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; font-size: 13.5px; }
+.tick b { font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: 0.12em; color: var(--accent); }
+.tick a { color: var(--ink); text-decoration: none; cursor: pointer; }
+.tick a:hover { color: var(--accent); }
+.tick .src { color: var(--muted); font-size: 12px; }
+@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+#hint { position: absolute; right: 24px; bottom: 56px; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; pointer-events: none; }
+#status { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--muted); font-family: var(--font-display); letter-spacing: 0.2em; font-size: 13px; text-transform: uppercase; }
+
+@media (max-width: 760px) {
+  #index { display: none; }
+  .card { width: calc(100vw - 32px); }
+  #hint { display: none; }
+  .brand h1 { font-size: 16px; letter-spacing: 0.2em; }
+  #clock { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ticker .track { animation-duration: 600s; }
+  .card { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg"></canvas>
+  <canvas id="globe" aria-label="Rotating globe. Drag to turn it, click a highlighted country to see its news."></canvas>
+  <svg id="links"></svg>
+  <div id="cards"></div>
+  <div id="status">Loading map…</div>
+</div>
+
+<header>
+  <div class="brand"><h1>World <b>News</b></h1><span id="clock"></span></div>
+  <div class="controls">
+    <span class="badge" id="mode"><span class="dot"></span><span id="modeText">Snapshot</span></span>
+    <button id="music" type="button" aria-pressed="false" title="Ambient music, made in your browser">Music: off</button>
+    <button id="pause" type="button" aria-pressed="false">Pause</button>
+  </div>
+</header>
+
+<nav id="index" aria-label="Countries with news"><div class="label">In the news</div></nav>
+<div id="hint">Drag to turn the globe<br>Click a lit country or a name to jump there</div>
+<div id="ticker" aria-label="All headlines"><div class="tag">LATEST</div><div class="viewport"><div class="track" id="track"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+/* ---------- Data ---------------------------------------------------------
+   SNAPSHOT: headlines gathered on 6 Nov 2026 (NZDT), each with its source.
+   Shown when live fetching is not possible (e.g. inside the Claude preview).
+   LIVE: when hosted on your own site, the page asks GDELT (free, no key)
+   for the newest English-language articles from each country's press.     */
+const SNAPSHOT_DATE = "6 Nov 2026";
+const COUNTRIES = [
+  { iso: "USA", name: "United States", lon: -98, lat: 39, g: "unitedstates", items: [
+    { t: "Democrats take control of both chambers of Congress after Tuesday's midterm elections", s: "Democracy Now!", d: "5 Nov", u: "https://www.democracynow.org/2026/11/5/headlines" },
+    { t: "Anthropic makes its financials public ahead of an expected IPO", s: "NPR", d: "5 Nov", u: "https://www.npr.org/sections/news/" },
+    { t: "Golden State Valkyries beat the Dream to win the 2026 WNBA Finals", s: "The Japan Times", d: "4 Nov", u: "https://www.japantimes.co.jp/latest-news/h/" } ] },
+  { iso: "CAN", name: "Canada", lon: -106, lat: 57, g: "canada", items: [] },
+  { iso: "MEX", name: "Mexico", lon: -102, lat: 23, g: "mexico", items: [] },
+  { iso: "BRA", name: "Brazil", lon: -51, lat: -10, g: "brazil", items: [
+    { t: "Lula wins a fourth term, beating Flávio Bolsonaro 51.8% to 48.2% in the runoff", s: "CNBC", d: "25 Oct", u: "https://www.cnbc.com/2026/10/25/brazil-lula-bolsonaro-presidential-election-runoff.html" },
+    { t: "Supreme Court justice bars Flávio Bolsonaro from leaving Brazil and orders his passports surrendered", s: "The Rio Times", d: "26 Oct", u: "https://www.riotimesonline.com/brazil-runoff-october-25-2026-flavio-bolsonaro-lula/" },
+    { t: "Formula 1 São Paulo Grand Prix weekend runs 6–8 Nov at Interlagos", s: "The Rio Times", d: "6 Nov", u: "https://www.riotimesonline.com/brazil-events-calendar-2026-2027/" } ] },
+  { iso: "ARG", name: "Argentina", lon: -64, lat: -34, g: "argentina", items: [] },
+  { iso: "GBR", name: "United Kingdom", lon: -2, lat: 54, g: "unitedkingdom", items: [] },
+  { iso: "FRA", name: "France", lon: 2.5, lat: 46.5, g: "france", items: [] },
+  { iso: "DEU", name: "Germany", lon: 10.4, lat: 51.2, g: "germany", items: [] },
+  { iso: "ESP", name: "Spain", lon: -3.7, lat: 40.3, g: "spain", items: [] },
+  { iso: "ITA", name: "Italy", lon: 12.5, lat: 42.8, g: "italy", items: [] },
+  { iso: "MDA", name: "Moldova", lon: 28.5, lat: 47.2, g: "moldova", items: [
+    { t: "Moldova moves ahead of Ukraine on the EU's new membership roadmap", s: "The Kyiv Independent", d: "4 Nov", u: "https://kyivindependent.com/" } ] },
+  { iso: "UKR", name: "Ukraine", lon: 31.5, lat: 49, g: "ukraine", items: [
+    { t: "42 bodies recovered after Russian strike on an aid-hub shelter in Komyshuvakha, Zaporizhzhia", s: "The Kyiv Independent", d: "5 Nov", u: "https://kyivindependent.com/" },
+    { t: "Kyiv hit by its worst water outage of the full-scale war after a mass Russian assault", s: "The Kyiv Independent", d: "4 Nov", u: "https://kyivindependent.com/" },
+    { t: "Ukrainian and Russian delegations due in Abu Dhabi on 10–11 Nov for US-brokered talks", s: "Al Jazeera", d: "4 Nov", u: "https://www.aljazeera.com/news/2026/11/4/ukraine-raises-death-toll-from-russian-strike-on-zaporizhia-to-40-people" } ] },
+  { iso: "RUS", name: "Russia", lon: 44, lat: 56, g: "russia", items: [
+    { t: "Ukraine strikes the Ryazan oil refinery; Moscow says it hit a Ukrainian postal hub and a ship", s: "Al Jazeera", d: "5 Nov", u: "https://www.aljazeera.com/tag/ukraine-russia-crisis/" },
+    { t: "Ukrainian strikes kill three in Russia's Belgorod region", s: "Al Jazeera", d: "4 Nov", u: "https://www.aljazeera.com/tag/ukraine-russia-crisis/" } ] },
+  { iso: "TUR", name: "Türkiye", lon: 35, lat: 39, g: "turkey", items: [] },
+  { iso: "EGY", name: "Egypt", lon: 30, lat: 26.5, g: "egypt", items: [] },
+  { iso: "NGA", name: "Nigeria", lon: 8, lat: 9.5, g: "nigeria", items: [] },
+  { iso: "KEN", name: "Kenya", lon: 37.9, lat: 0.2, g: "kenya", items: [] },
+  { iso: "ZAF", name: "South Africa", lon: 24, lat: -29, g: "southafrica", items: [] },
+  { iso: "ISR", name: "Israel", lon: 34.9, lat: 31.5, g: "israel", items: [] },
+  { iso: "SAU", name: "Saudi Arabia", lon: 45, lat: 24, g: "saudiarabia", items: [] },
+  { iso: "IRN", name: "Iran", lon: 53.7, lat: 32.4, g: "iran", items: [
+    { t: "Iran braces for the possibility of another round of US strikes", s: "NPR", d: "5 Nov", u: "https://www.npr.org/sections/news/" },
+    { t: "A new Democratic majority in Congress could press the White House to end the war in Iran", s: "NPR", d: "5 Nov", u: "https://www.npr.org/sections/news/" } ] },
+  { iso: "PAK", name: "Pakistan", lon: 69, lat: 30, g: "pakistan", items: [] },
+  { iso: "IND", name: "India", lon: 79, lat: 22, g: "india", items: [
+    { t: "Cabinet approves the ₹4,371 crore VISTAR scheme to overhaul national statistics", s: "Insights on India", d: "5 Nov", u: "https://insightsonindia.com/2026/11/05/upsc-current-affairs-5-november-2026" },
+    { t: "Ladakh becomes India's first fully organic Union Territory", s: "Insights on India", d: "5 Nov", u: "https://insightsonindia.com/2026/11/05/upsc-current-affairs-5-november-2026" },
+    { t: "India and Australia meet in the 4th T20 International at Eden Gardens, Kolkata", s: "WinCalendar", d: "5 Nov", u: "https://www.wincalendar.com/India/date/5-November-2026" } ] },
+  { iso: "CHN", name: "China", lon: 104, lat: 35, g: "china", items: [
+    { t: "APEC meetings under way in China; Japan calls for a fair economic order", s: "Nippon.com", d: "4 Nov", u: "https://www.nippon.com/en/news" },
+    { t: "Shenzhen prepares to host the APEC leaders' summit on 18–19 Nov", s: "Japan Research Institute", d: "Upcoming", u: "https://www.jri.co.jp/report/tanaka2/detail/16379/" } ] },
+  { iso: "PRK", name: "North Korea", lon: 127.2, lat: 40.1, g: "", items: [
+    { t: "North Korea fires multiple missiles toward the Sea of Japan", s: "Nippon.com", d: "4 Nov", u: "https://www.nippon.com/en/news" } ] },
+  { iso: "KOR", name: "South Korea", lon: 127.8, lat: 36.3, g: "southkorea", items: [] },
+  { iso: "JPN", name: "Japan", lon: 138.3, lat: 36.2, g: "japan", items: [
+    { t: "Typhoon In-fa regains strength as heavy rain threatens the Kanto region", s: "News On Japan", d: "4 Nov", u: "https://newsonjapan.com/" },
+    { t: "Nikkei falls 1.4% to 62,188 as chip and AI stocks are sold off", s: "News On Japan", d: "4 Nov", u: "https://newsonjapan.com/" },
+    { t: "Tokyo wary of Trump's diplomacy toward Asia after the US midterms", s: "Nippon.com", d: "5 Nov", u: "https://www.nippon.com/en/news" } ] },
+  { iso: "PHL", name: "Philippines", lon: 122, lat: 12, g: "philippines", items: [] },
+  { iso: "IDN", name: "Indonesia", lon: 117, lat: -2.5, g: "indonesia", items: [] },
+  { iso: "AUS", name: "Australia", lon: 134, lat: -25, g: "australia", items: [] },
+  { iso: "NZL", name: "New Zealand", lon: 172.5, lat: -41.5, g: "newzealand", items: [
+    { t: "New Zealanders vote on Saturday 7 November in the general election", s: "1News", d: "7 Nov", u: "https://www.1news.co.nz/2026/01/21/game-on-as-pm-luxon-reveals-2026-election-date/" },
+    { t: "Luxon's National-led coalition faces Hipkins' Labour in a rerun of the 2023 contest", s: "AAP", d: "Campaign", u: "https://aapnews.aap.com.au/news/luxon-sets-november-7-as-new-zealand-poll-day" } ] },
+];
+const byIso = new Map(COUNTRIES.map(c => [c.iso, c]));
+// Names used by the fallback map source, mapped to ISO codes.
+const NAME_TO_ISO = { "united states": "USA", "canada": "CAN", "mexico": "MEX", "brazil": "BRA", "argentina": "ARG", "united kingdom": "GBR",
+  "france": "FRA", "germany": "DEU", "spain": "ESP", "italy": "ITA", "moldova": "MDA", "ukraine": "UKR", "russia": "RUS", "turkey": "TUR",
+  "egypt": "EGY", "nigeria": "NGA", "kenya": "KEN", "south africa": "ZAF", "israel": "ISR", "saudi arabia": "SAU", "iran": "IRN",
+  "pakistan": "PAK", "india": "IND", "china": "CHN", "dem. rep. korea": "PRK", "north korea": "PRK", "korea": "KOR", "south korea": "KOR",
+  "japan": "JPN", "philippines": "PHL", "indonesia": "IDN", "australia": "AUS", "new zealand": "NZL" };
+
+/* ---------- Map geometry -------------------------------------------------
+   The page may only load scripts from a few CDNs, so the world outline comes
+   from a script that carries its own country shapes. Two sources are tried.  */
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error(src)); document.head.appendChild(s); });
+}
+function fixWinding(fc) {
+  // d3 expects clockwise outer rings; flip any polygon that would cover most of the sphere.
+  fc.features.forEach(f => {
+    const g = f.geometry; if (!g) return;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+    polys.forEach(p => { if (d3.geoArea({ type: "Polygon", coordinates: p }) > 2 * Math.PI) p.forEach(r => r.reverse()); });
+  });
+  return fc;
+}
+async function fromDatamaps() {
+  await loadScript("https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.world.min.js");
+  const topo = window.Datamap && window.Datamap.prototype.worldTopo;
+  if (!topo) throw new Error("no topology");
+  const key = Object.keys(topo.objects)[0];
+  const fc = topojson.feature(topo, topo.objects[key]);
+  fc.features.forEach(f => { f.iso = String(f.id || ""); f.label = (f.properties && f.properties.name) || f.iso; });
+  return fc;
+}
+function decodeRing(str, off, scale) {
+  const out = []; let px = off[0], py = off[1];
+  for (let i = 0; i < str.length; i += 2) {
+    let x = str.charCodeAt(i) - 64, y = str.charCodeAt(i + 1) - 64;
+    x = (x >> 1) ^ (-(x & 1)); y = (y >> 1) ^ (-(y & 1));
+    x += px; y += py; px = x; py = y; out.push([x / scale, y / scale]);
+  }
+  return out;
+}
+async function fromEcharts() {
+  let geo = null;
+  window.echarts = { registerMap: (n, g) => { geo = g; } };
+  await loadScript("https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/world.js");
+  if (!geo) throw new Error("no geojson");
+  if (geo.UTF8Encoding) {
+    const sc = geo.UTF8Scale || 1024;
+    geo.features.forEach(f => {
+      const g = f.geometry, o = g.encodeOffsets;
+      if (g.type === "Polygon") g.coordinates = g.coordinates.map((r, i) => decodeRing(r, o[i], sc));
+      else if (g.type === "MultiPolygon") g.coordinates = g.coordinates.map((p, i) => p.map((r, j) => decodeRing(r, o[i][j], sc)));
+    });
+  }
+  geo.features.forEach(f => { const n = (f.properties.name || "").toLowerCase(); f.iso = NAME_TO_ISO[n] || n; f.label = f.properties.name; });
+  return fixWinding(geo);
+}
+async function loadWorld() {
+  if (window.__TEST_WORLD__) return window.__TEST_WORLD__;
+  try { return await fromDatamaps(); } catch (e) { console.warn("Primary map failed", e); }
+  try { return await fromEcharts(); } catch (e) { console.warn("Fallback map failed", e); }
+  return { type: "FeatureCollection", features: [] };
+}
+
+/* ---------- Scene --------------------------------------------------------- */
+const bg = document.getElementById("bg"), cv = document.getElementById("globe");
+const bctx = bg.getContext("2d"), ctx = cv.getContext("2d");
+const svg = d3.select("#links"), cardsEl = document.getElementById("cards");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const projection = d3.geoOrthographic().clipAngle(90).precision(0.6);
+const path = d3.geoPath(projection, ctx);
+const graticule = d3.geoGraticule10();
+let W = 0, H = 0, R = 0, CX = 0, CY = 0, DPR = 1;
+let world = { features: [] };
+let rot = [-150, -20, 0];          // start over the Pacific, NZ and Japan first
+let paused = false, dragging = false, holdUntil = 0, fly = null;
+const SPEED = reduceMotion ? 1.5 : 5;     // degrees per second
+const FOCUS = 0.4;                         // radians from view centre that count as "in focus"
+const active = new Map();                  // iso -> {el, born}
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  [bg, cv].forEach(c => { c.width = W * DPR; c.height = H * DPR; });
+  R = Math.min(W * 0.36, (H - 120) * 0.44);
+  CX = W / 2; CY = H / 2 - 6;
+  projection.scale(R).translate([CX, CY]);
+  drawStars();
+}
+function drawStars() {
+  bctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = bctx.createRadialGradient(W * 0.5, H * 0.45, 0, W * 0.5, H * 0.45, Math.max(W, H) * 0.8);
+  g.addColorStop(0, "#0a1830"); g.addColorStop(1, "#02050c");
+  bctx.fillStyle = g; bctx.fillRect(0, 0, W, H);
+  const rnd = d3.randomLcg(7);
+  for (let i = 0; i < 420; i++) {
+    const x = rnd() * W, y = rnd() * H, r = rnd() * 1.1 + 0.2;
+    bctx.fillStyle = `rgba(200,225,255,${0.15 + rnd() * 0.55})`;
+    bctx.beginPath(); bctx.arc(x, y, r, 0, 7); bctx.fill();
+  }
+}
+
+const hasNews = c => c.items && c.items.length > 0;
+const viewCentre = () => [-rot[0], -rot[1]];
+const norm180 = a => ((a + 540) % 360) - 180;
+
+function draw(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  // atmosphere
+  const halo = ctx.createRadialGradient(CX, CY, R * 0.92, CX, CY, R * 1.28);
+  halo.addColorStop(0, "rgba(92,200,255,0.35)"); halo.addColorStop(0.35, "rgba(60,140,255,0.12)"); halo.addColorStop(1, "rgba(60,140,255,0)");
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(CX, CY, R * 1.28, 0, 7); ctx.fill();
+  // ocean
+  const sea = ctx.createRadialGradient(CX - R * 0.35, CY - R * 0.4, R * 0.1, CX, CY, R);
+  sea.addColorStop(0, "#14457a"); sea.addColorStop(0.6, "#0a2648"); sea.addColorStop(1, "#04122a");
+  ctx.fillStyle = sea; ctx.beginPath(); path({ type: "Sphere" }); ctx.fill();
+  ctx.strokeStyle = "rgba(140,200,255,0.07)"; ctx.lineWidth = 0.6; ctx.beginPath(); path(graticule); ctx.stroke();
+  // land
+  ctx.fillStyle = "#2a6a8f"; ctx.beginPath(); world.features.forEach(f => path(f)); ctx.fill();
+  // countries with news get a brighter tint; focused ones glow
+  world.features.forEach(f => {
+    const c = byIso.get(f.iso); if (!c || !hasNews(c)) return;
+    const on = active.has(c.iso);
+    ctx.fillStyle = on ? "rgba(120,220,255,0.85)" : "rgba(92,200,255,0.32)";
+    if (on) { ctx.shadowColor = "rgba(92,200,255,0.9)"; ctx.shadowBlur = 18; }
+    ctx.beginPath(); path(f); ctx.fill(); ctx.shadowBlur = 0;
+  });
+  ctx.strokeStyle = "rgba(190,230,255,0.38)"; ctx.lineWidth = 0.55; ctx.beginPath(); world.features.forEach(f => path(f)); ctx.stroke();
+  // markers
+  const centre = viewCentre();
+  COUNTRIES.forEach(c => {
+    if (!hasNews(c) || d3.geoDistance([c.lon, c.lat], centre) > 1.45) return;
+    const [x, y] = projection([c.lon, c.lat]);
+    const pulse = reduceMotion ? 0.5 : (Math.sin(t / 500 + c.lon) + 1) / 2;
+    ctx.fillStyle = `rgba(92,200,255,${0.25 * (1 - pulse)})`;
+    ctx.beginPath(); ctx.arc(x, y, 5 + pulse * 10, 0, 7); ctx.fill();
+    ctx.fillStyle = "#e6f7ff"; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill();
+  });
+  // terminator-style shading and highlight for depth
+  const shade = ctx.createRadialGradient(CX - R * 0.4, CY - R * 0.45, R * 0.2, CX, CY, R * 1.02);
+  shade.addColorStop(0, "rgba(255,255,255,0.08)"); shade.addColorStop(0.55, "rgba(0,0,0,0)"); shade.addColorStop(1, "rgba(0,4,12,0.55)");
+  ctx.fillStyle = shade; ctx.beginPath(); path({ type: "Sphere" }); ctx.fill();
+}
+
+/* ---------- Cards ---------------------------------------------------------- */
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+function cardHtml(c) {
+  const li = c.items.slice(0, 3).map(i =>
+    `<li><a href="${esc(i.u)}" target="_blank" rel="noopener">${esc(i.t)}</a><div class="meta">${esc(i.s)} · ${esc(i.d)}</div></li>`).join("");
+  return `<div class="top"><span class="code">${c.iso}</span><h2>${esc(c.name)}</h2></div><ol>${li}</ol>`;
+}
+function updateFocus(now) {
+  const centre = viewCentre();
+  const ranked = COUNTRIES.filter(hasNews)
+    .map(c => ({ c, d: d3.geoDistance([c.lon, c.lat], centre) }))
+    .filter(o => o.d < FOCUS || (fly && fly.iso === o.c.iso && o.d < 0.9))
+    .sort((a, b) => a.d - b.d).slice(0, 2);
+  const want = new Set(ranked.map(o => o.c.iso));
+  for (const [iso, a] of active) {
+    if (!want.has(iso) && !a.leaving) {
+      a.leaving = true; a.el.classList.remove("show");
+      setTimeout(() => { a.el.remove(); active.delete(iso); }, 600);
+    }
+  }
+  ranked.forEach(({ c }) => {
+    const a = active.get(c.iso);
+    if (a && !a.leaving) return;
+    if (a) { a.el.remove(); active.delete(c.iso); }
+    const el = document.createElement("article"); el.className = "card"; el.innerHTML = cardHtml(c);
+    el.addEventListener("pointerenter", () => { holdUntil = Infinity; });
+    el.addEventListener("pointerleave", () => { holdUntil = performance.now() + 1500; });
+    cardsEl.appendChild(el); active.set(c.iso, { el, born: now });
+    requestAnimationFrame(() => el.classList.add("show"));
+  });
+  document.querySelectorAll(".chip").forEach(b => b.classList.toggle("on", active.has(b.dataset.iso)));
+}
+function placeCards() {
+  const lines = [];
+  const used = { left: [], right: [] };
+  [...active.entries()].forEach(([iso, a]) => {
+    const c = byIso.get(iso); const [px, py] = projection([c.lon, c.lat]);
+    const w = a.el.offsetWidth, h = a.el.offsetHeight;
+    let side = px >= CX ? "right" : "left";
+    if (W < 760) side = "bottom";
+    let x, y;
+    if (side === "bottom") { x = 16; y = H - 56 - h - used.left.reduce((s, v) => s + v + 10, 0); used.left.push(h); }
+    else {
+      x = side === "right" ? Math.max(px + 70, CX + R * 0.45) : Math.min(px - 70 - w, CX - R * 0.45 - w);
+      x = Math.max(16, Math.min(W - w - 16, x));
+      y = py - h / 2 - 30;
+      used[side].forEach(o => { if (Math.abs(o - y) < h + 12) y = o + h + 12; });
+      y = Math.max(70, Math.min(H - 56 - h, y));
+      used[side].push(y);
+    }
+    a.el.style.left = x + "px"; a.el.style.top = y + "px";
+    const ax = side === "left" ? x + w : side === "right" ? x : x + 40, ay = side === "bottom" ? y : y + 28;
+    lines.push({ iso, px, py, ax, ay, o: a.leaving ? 0 : 1 });
+  });
+  const sel = svg.selectAll("g.lk").data(lines, d => d.iso);
+  const g = sel.enter().append("g").attr("class", "lk");
+  g.append("polyline").attr("fill", "none").attr("stroke", "rgba(140,210,255,0.75)").attr("stroke-width", 1);
+  g.append("circle").attr("r", 4).attr("fill", "none").attr("stroke", "#e6f7ff").attr("stroke-width", 1.2);
+  sel.exit().remove();
+  const all = g.merge(sel).style("opacity", d => d.o).style("transition", "opacity .5s");
+  all.select("polyline").attr("points", d => { const mx = d.ax + (d.ax > d.px ? -24 : 24); return `${d.px},${d.py} ${mx},${d.ay} ${d.ax},${d.ay}`; });
+  all.select("circle").attr("cx", d => d.px).attr("cy", d => d.py);
+}
+
+/* ---------- Motion ---------------------------------------------------------- */
+function targetTilt() {
+  // Tilt toward the latitude of the next country with news that is coming round.
+  const cl = -rot[0]; let best = null, bd = 1e9;
+  COUNTRIES.filter(hasNews).forEach(c => { const d = norm180(cl - c.lon); if (d > -25 && d < bd) { bd = d; best = c; } });
+  return best ? Math.max(-42, Math.min(42, -best.lat * 0.75)) : -15;
+}
+function flyTo(c) {
+  const from = rot.slice(), toL = from[0] + norm180(-c.lon - from[0]), toP = -c.lat * 0.85;
+  fly = { iso: c.iso, start: performance.now(), dur: 1400, i: d3.interpolate(from, [toL, toP, 0]) };
+}
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (fly) {
+    const k = Math.min(1, (now - fly.start) / fly.dur);
+    rot = fly.i(d3.easeCubicInOut(k));
+    if (k >= 1) { fly = null; holdUntil = now + 7000; }
+  } else if (!paused && !dragging && now > holdUntil) {
+    const slow = active.size ? 0.4 : 1;   // ease off while a card is up so it can be read
+    rot[0] += SPEED * slow * dt;
+    rot[1] += (targetTilt() - rot[1]) * Math.min(1, dt * 0.35);
+  }
+  projection.rotate(rot);
+  draw(now);
+  updateFocus(now);
+  placeCards();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Interaction ----------------------------------------------------- */
+let downAt = null;
+cv.addEventListener("pointerdown", e => { downAt = { x: e.clientX, y: e.clientY, r: rot.slice(), moved: false }; dragging = true; fly = null; cv.classList.add("dragging"); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener("pointermove", e => {
+  if (!downAt) return;
+  const dx = e.clientX - downAt.x, dy = e.clientY - downAt.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) downAt.moved = true;
+  const k = 90 / R;
+  rot = [downAt.r[0] + dx * k, Math.max(-70, Math.min(70, downAt.r[1] - dy * k)), 0];
+});
+cv.addEventListener("pointerup", e => {
+  dragging = false; cv.classList.remove("dragging"); holdUntil = performance.now() + 3000;
+  if (downAt && !downAt.moved) {
+    const ll = projection.invert([e.clientX, e.clientY]);
+    if (ll && d3.geoDistance(ll, viewCentre()) < Math.PI / 2) {
+      const f = world.features.find(f => d3.geoContains(f, ll));
+      const c = f && byIso.get(f.iso);
+      if (c && hasNews(c)) flyTo(c);
+    }
+  }
+  downAt = null;
+});
+cv.addEventListener("pointercancel", () => { dragging = false; downAt = null; cv.classList.remove("dragging"); });
+const pauseBtn = document.getElementById("pause");
+function setPaused(p) { paused = p; pauseBtn.textContent = p ? "Resume" : "Pause"; pauseBtn.setAttribute("aria-pressed", String(p)); }
+pauseBtn.addEventListener("click", () => setPaused(!paused));
+document.addEventListener("keydown", e => { if (e.code === "Space" && e.target === document.body) { e.preventDefault(); setPaused(!paused); } });
+addEventListener("resize", resize);
+
+/* ---------- Index and ticker ------------------------------------------------- */
+function renderLists() {
+  const withNews = COUNTRIES.filter(hasNews);
+  const idx = document.getElementById("index");
+  idx.querySelectorAll(".chip").forEach(n => n.remove());
+  withNews.forEach(c => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.iso = c.iso;
+    b.innerHTML = `<span class="code">${c.iso}</span>${esc(c.name)}<span class="n">${c.items.length}</span>`;
+    b.addEventListener("click", () => flyTo(c)); idx.appendChild(b);
+  });
+  const ticks = withNews.flatMap(c => c.items.map(i =>
+    `<span class="tick"><b>${c.iso}</b><a data-iso="${c.iso}" tabindex="0">${esc(i.t)}</a><span class="src">${esc(i.s)}</span></span>`)).join("");
+  const track = document.getElementById("track");
+  track.innerHTML = ticks + ticks;
+  track.querySelectorAll("a").forEach(a => {
+    const go = () => flyTo(byIso.get(a.dataset.iso));
+    a.addEventListener("click", go); a.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  });
+}
+function refreshCards() { for (const [iso, a] of active) a.el.innerHTML = cardHtml(byIso.get(iso)); }
+
+/* ---------- Clock and live news ----------------------------------------------- */
+const clock = document.getElementById("clock");
+function tickClock() { clock.textContent = new Date().toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).toUpperCase(); }
+setInterval(tickClock, 15000); tickClock();
+const modeEl = document.getElementById("mode"), modeText = document.getElementById("modeText");
+modeText.textContent = "Snapshot · " + SNAPSHOT_DATE;
+modeEl.title = "Headlines gathered on " + SNAPSHOT_DATE + ". Host this page yourself to get live headlines.";
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const key = s => String(s || "").toLowerCase().replace(/[^a-z]/g, "");
+function fmtSeen(s) {
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(s || ""); if (!m) return "";
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
+  return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+async function loadLive() {
+  const list = COUNTRIES.filter(c => c.g);
+  const byKey = new Map(list.map(c => [c.g, c])); byKey.set("russianfederation", byIso.get("RUS"));
+  const fresh = new Map();
+  for (let i = 0; i < list.length; i += 8) {
+    const group = list.slice(i, i + 8);
+    const q = "(" + group.map(c => "sourcecountry:" + c.g).join(" OR ") + ") sourcelang:english";
+    const url = "https://api.gdeltproject.org/api/v2/doc/doc?format=json&mode=artlist&sort=datedesc&timespan=24h&maxrecords=200&query=" + encodeURIComponent(q);
+    const res = await fetch(url);          // throws inside the Claude preview (outside requests are blocked)
+    if (!res.ok) throw new Error("GDELT " + res.status);
+    const data = await res.json();
+    (data.articles || []).forEach(a => {
+      const c = byKey.get(key(a.sourcecountry)); if (!c || !a.title) return;
+      const arr = fresh.get(c.iso) || []; if (arr.length >= 3 || arr.some(x => x.t === a.title)) return;
+      arr.push({ t: a.title, s: a.domain, d: fmtSeen(a.seendate), u: a.url }); fresh.set(c.iso, arr);
+    });
+    if (i + 8 < list.length) await sleep(5500);   // GDELT asks for one request every 5 seconds
+  }
+  if (!fresh.size) throw new Error("no articles");
+  fresh.forEach((items, iso) => { byIso.get(iso).items = items; });
+  modeEl.classList.add("live");
+  modeText.textContent = "Live · updated " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  modeEl.title = "Newest English-language articles from each country's press, via GDELT.";
+  renderLists(); refreshCards();
+}
+async function tryLive() {
+  try { await loadLive(); setTimeout(tryLive, 15 * 60 * 1000); }
+  catch (e) { console.info("Live news unavailable, showing snapshot.", e.message); }
+}
+
+/* ---------- Background music ---------------------------------------------------------
+   Easy-listening ambient made live with Web Audio: warm pad chords
+   (Cmaj9 → Am9 → Fmaj9 → G6/9), a soft bass, and sparse bell-like notes through reverb
+   and echo. Browsers only allow sound after a click or key press, so it starts on the
+   first interaction unless the viewer has turned it off.                                 */
+const Music = (() => {
+  const CHORDS = [
+    { bass: 36, pad: [60, 64, 67, 71, 74] },   // Cmaj9
+    { bass: 33, pad: [57, 60, 64, 67, 71] },   // Am9
+    { bass: 29, pad: [53, 57, 60, 64, 67] },   // Fmaj9
+    { bass: 31, pad: [55, 59, 62, 64, 69] },   // G6/9
+  ];
+  const BELL = [72, 74, 76, 79, 81, 84, 86, 88];   // C major pentatonic, upper register
+  const BAR = 8;                                    // seconds per chord
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  let ac, master, bus, echo, timer, nextChord = 0, chordIdx = 0, nextBell = 0, on = false, started = false;
+
+  function impulse(seconds, decay) {
+    const len = ac.sampleRate * seconds, buf = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
+    return buf;
+  }
+  function build() {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.connect(master);
+    const rev = ac.createConvolver(); rev.buffer = impulse(4.5, 2.6);
+    const wet = ac.createGain(); wet.gain.value = 0.55; rev.connect(wet).connect(comp);
+    const dry = ac.createGain(); dry.gain.value = 0.6; dry.connect(comp);
+    bus = ac.createGain(); bus.connect(dry); bus.connect(rev);
+    echo = ac.createDelay(2); echo.delayTime.value = 0.75;
+    const fb = ac.createGain(); fb.gain.value = 0.38; const tone = ac.createBiquadFilter(); tone.type = "lowpass"; tone.frequency.value = 2200;
+    echo.connect(tone).connect(fb).connect(echo); tone.connect(bus);
+  }
+  function pad(chord, t) {
+    const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.setValueAtTime(500, t);
+    lp.frequency.linearRampToValueAtTime(1100, t + BAR * 0.5); lp.frequency.linearRampToValueAtTime(600, t + BAR + 2);
+    const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 2.5);
+    g.gain.setValueAtTime(0.05, t + BAR - 1); g.gain.linearRampToValueAtTime(0, t + BAR + 2.5);
+    lp.connect(g).connect(bus);
+    chord.pad.forEach(m => [-6, 6].forEach(cents => {
+      const o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = hz(m); o.detune.value = cents;
+      o.connect(lp); o.start(t); o.stop(t + BAR + 3);
+    }));
+    const b = ac.createOscillator(), bg = ac.createGain(); b.type = "sine"; b.frequency.value = hz(chord.bass);
+    bg.gain.setValueAtTime(0, t); bg.gain.linearRampToValueAtTime(0.09, t + 1.5); bg.gain.setValueAtTime(0.09, t + BAR - 1); bg.gain.linearRampToValueAtTime(0, t + BAR + 1.5);
+    b.connect(bg).connect(bus); b.start(t); b.stop(t + BAR + 2);
+  }
+  function bell(m, t) {
+    const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.045, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
+    const o = ac.createOscillator(); o.type = "sine"; o.frequency.value = hz(m);
+    const o2 = ac.createOscillator(); o2.type = "sine"; o2.frequency.value = hz(m) * 2.01;
+    const g2 = ac.createGain(); g2.gain.value = 0.25;
+    o.connect(g); o2.connect(g2).connect(g); g.connect(bus); g.connect(echo);
+    o.start(t); o2.start(t); o.stop(t + 3.4); o2.stop(t + 3.4);
+  }
+  function schedule() {
+    const ahead = ac.currentTime + 1.5;
+    while (nextChord < ahead) { pad(CHORDS[chordIdx % CHORDS.length], nextChord); chordIdx++; nextChord += BAR; }
+    while (nextBell < ahead) {
+      if (Math.random() < 0.55) {
+        const chord = CHORDS[(chordIdx - 1 + CHORDS.length) % CHORDS.length];
+        const tones = BELL.filter(m => chord.pad.some(p => (p - m) % 12 === 0));
+        const pool = Math.random() < 0.7 && tones.length ? tones : BELL;
+        bell(pool[Math.floor(Math.random() * pool.length)], nextBell);
+      }
+      nextBell += [0.75, 1.5, 1.5, 2.25][Math.floor(Math.random() * 4)];
+    }
+  }
+  async function start() {
+    if (!ac) build();
+    try { await ac.resume(); } catch (e) { return false; }
+    if (!started) { started = true; nextChord = ac.currentTime + 0.1; nextBell = ac.currentTime + 3; }
+    clearInterval(timer); schedule(); timer = setInterval(schedule, 250);
+    master.gain.cancelScheduledValues(ac.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ac.currentTime);
+    master.gain.linearRampToValueAtTime(0.8, ac.currentTime + 3);
+    on = true; return true;
+  }
+  function stop() {
+    if (!ac) return; on = false;
+    master.gain.cancelScheduledValues(ac.currentTime);
+    master.gain.setValueAtTime(master.gain.value, ac.currentTime);
+    master.gain.linearRampToValueAtTime(0, ac.currentTime + 1.2);
+    setTimeout(() => { if (!on) { clearInterval(timer); ac.suspend(); } }, 1300);
+  }
+  return { start, stop, get on() { return on; } };
+})();
+
+const musicBtn = document.getElementById("music");
+let musicWanted = true;   // play by default once the browser allows it
+function showMusic() { musicBtn.textContent = Music.on ? "Music: on" : "Music: off"; musicBtn.setAttribute("aria-pressed", String(Music.on)); }
+musicBtn.addEventListener("click", async e => {
+  e.stopPropagation();
+  musicWanted = !Music.on;
+  if (musicWanted) await Music.start(); else Music.stop();
+  showMusic();
+});
+async function firstGesture(e) {
+  if (e && e.target === musicBtn) return;   // the button handles its own click
+  removeEventListener("pointerdown", firstGesture, true); removeEventListener("keydown", firstGesture, true);
+  if (musicWanted && !Music.on) { await Music.start(); showMusic(); }
+}
+addEventListener("pointerdown", firstGesture, true);
+addEventListener("keydown", firstGesture, true);
+
+/* ---------- Start ---------------------------------------------------------------- */
+resize();
+renderLists();
+requestAnimationFrame(frame);
+loadWorld().then(w => {
+  world = w;
+  document.getElementById("status").remove();
+  if (!w.features.length) console.warn("No country shapes loaded; showing markers only.");
+});
+tryLive();
+</script>
+</body>
+
+</html>
