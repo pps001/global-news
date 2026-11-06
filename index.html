@@ -154,7 +154,7 @@ button:focus-visible, .chip:focus-visible, .tick a:focus-visible, .card a:focus-
 </header>
 
 <nav id="index" aria-label="Countries with news"><div class="label">In the news</div></nav>
-<div id="hint">Drag to turn the globe<br>Click a lit country or a name to jump there</div>
+<div id="hint">Shading shows where it is night right now<br>Drag to turn the globe<br>Click a lit country or a name to jump there</div>
 <div id="ticker" aria-label="All headlines"><div class="tag">LATEST</div><div class="viewport"><div class="track" id="track"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -182,6 +182,22 @@ const COUNTRIES = [
   { iso: "DEU", name: "Germany", lon: 10.4, lat: 51.2, g: "germany", items: [] },
   { iso: "ESP", name: "Spain", lon: -3.7, lat: 40.3, g: "spain", items: [] },
   { iso: "ITA", name: "Italy", lon: 12.5, lat: 42.8, g: "italy", items: [] },
+  { iso: "IRL", name: "Ireland", lon: -8, lat: 53.2, g: "ireland", items: [] },
+  { iso: "PRT", name: "Portugal", lon: -8.2, lat: 39.6, g: "portugal", items: [] },
+  { iso: "NLD", name: "Netherlands", lon: 5.3, lat: 52.2, g: "netherlands", items: [] },
+  { iso: "BEL", name: "Belgium", lon: 4.5, lat: 50.6, g: "belgium", items: [] },
+  { iso: "CHE", name: "Switzerland", lon: 8.2, lat: 46.8, g: "switzerland", items: [] },
+  { iso: "AUT", name: "Austria", lon: 14.5, lat: 47.6, g: "austria", items: [] },
+  { iso: "DNK", name: "Denmark", lon: 9.5, lat: 56, g: "denmark", items: [] },
+  { iso: "NOR", name: "Norway", lon: 9, lat: 61, g: "norway", items: [] },
+  { iso: "SWE", name: "Sweden", lon: 16, lat: 62, g: "sweden", items: [] },
+  { iso: "FIN", name: "Finland", lon: 26, lat: 64, g: "finland", items: [] },
+  { iso: "POL", name: "Poland", lon: 19.4, lat: 52, g: "poland", items: [] },
+  { iso: "CZE", name: "Czechia", lon: 15.4, lat: 49.8, g: "EZ", items: [] },
+  { iso: "HUN", name: "Hungary", lon: 19.4, lat: 47.2, g: "hungary", items: [] },
+  { iso: "ROU", name: "Romania", lon: 25, lat: 45.9, g: "romania", items: [] },
+  { iso: "SRB", name: "Serbia", lon: 20.9, lat: 44.1, g: "serbia", items: [] },
+  { iso: "GRC", name: "Greece", lon: 22, lat: 39.3, g: "greece", items: [] },
   { iso: "MDA", name: "Moldova", lon: 28.5, lat: 47.2, g: "moldova", items: [
     { t: "Moldova moves ahead of Ukraine on the EU's new membership roadmap", s: "The Kyiv Independent", d: "4 Nov", u: "https://kyivindependent.com/" } ] },
   { iso: "UKR", name: "Ukraine", lon: 31.5, lat: 49, g: "ukraine", items: [
@@ -195,6 +211,22 @@ const COUNTRIES = [
   { iso: "EGY", name: "Egypt", lon: 30, lat: 26.5, g: "egypt", items: [] },
   { iso: "NGA", name: "Nigeria", lon: 8, lat: 9.5, g: "nigeria", items: [] },
   { iso: "KEN", name: "Kenya", lon: 37.9, lat: 0.2, g: "kenya", items: [] },
+  { iso: "MAR", name: "Morocco", lon: -6.5, lat: 31.8, g: "morocco", items: [] },
+  { iso: "DZA", name: "Algeria", lon: 2.6, lat: 28, g: "algeria", items: [] },
+  { iso: "TUN", name: "Tunisia", lon: 9.5, lat: 34, g: "tunisia", items: [] },
+  { iso: "SEN", name: "Senegal", lon: -14.5, lat: 14.5, g: "senegal", items: [] },
+  { iso: "GHA", name: "Ghana", lon: -1.2, lat: 7.9, g: "ghana", items: [] },
+  { iso: "CIV", name: "Côte d'Ivoire", lon: -5.5, lat: 7.5, g: "IV", items: [] },
+  { iso: "CMR", name: "Cameroon", lon: 12.4, lat: 5.7, g: "cameroon", items: [] },
+  { iso: "SDN", name: "Sudan", lon: 30, lat: 15.5, g: "sudan", items: [] },
+  { iso: "ETH", name: "Ethiopia", lon: 39.5, lat: 8.6, g: "ethiopia", items: [] },
+  { iso: "UGA", name: "Uganda", lon: 32.4, lat: 1.4, g: "uganda", items: [] },
+  { iso: "RWA", name: "Rwanda", lon: 29.9, lat: -2, g: "rwanda", items: [] },
+  { iso: "TZA", name: "Tanzania", lon: 34.9, lat: -6.4, g: "tanzania", items: [] },
+  { iso: "COD", name: "DR Congo", lon: 23.6, lat: -2.9, g: "CG", items: [] },
+  { iso: "AGO", name: "Angola", lon: 17.9, lat: -11.2, g: "angola", items: [] },
+  { iso: "ZMB", name: "Zambia", lon: 27.8, lat: -13.1, g: "zambia", items: [] },
+  { iso: "ZWE", name: "Zimbabwe", lon: 29.2, lat: -19, g: "zimbabwe", items: [] },
   { iso: "ZAF", name: "South Africa", lon: 24, lat: -29, g: "southafrica", items: [] },
   { iso: "ISR", name: "Israel", lon: 34.9, lat: 31.5, g: "israel", items: [] },
   { iso: "SAU", name: "Saudi Arabia", lon: 45, lat: 24, g: "saudiarabia", items: [] },
@@ -217,6 +249,8 @@ const COUNTRIES = [
     { t: "Nikkei falls 1.4% to 62,188 as chip and AI stocks are sold off", s: "News On Japan", d: "4 Nov", u: "https://newsonjapan.com/" },
     { t: "Tokyo wary of Trump's diplomacy toward Asia after the US midterms", s: "Nippon.com", d: "5 Nov", u: "https://www.nippon.com/en/news" } ] },
   { iso: "PHL", name: "Philippines", lon: 122, lat: 12, g: "philippines", items: [] },
+  { iso: "MYS", name: "Malaysia", lon: 102.3, lat: 4, g: "malaysia", items: [] },
+  { iso: "SGP", name: "Singapore", lon: 103.8, lat: 1.35, g: "SN", items: [] },
   { iso: "IDN", name: "Indonesia", lon: 117, lat: -2.5, g: "indonesia", items: [] },
   { iso: "AUS", name: "Australia", lon: 134, lat: -25, g: "australia", items: [] },
   { iso: "NZL", name: "New Zealand", lon: 172.5, lat: -41.5, g: "newzealand", items: [
@@ -229,7 +263,13 @@ const NAME_TO_ISO = { "united states": "USA", "canada": "CAN", "mexico": "MEX", 
   "france": "FRA", "germany": "DEU", "spain": "ESP", "italy": "ITA", "moldova": "MDA", "ukraine": "UKR", "russia": "RUS", "turkey": "TUR",
   "egypt": "EGY", "nigeria": "NGA", "kenya": "KEN", "south africa": "ZAF", "israel": "ISR", "saudi arabia": "SAU", "iran": "IRN",
   "pakistan": "PAK", "india": "IND", "china": "CHN", "dem. rep. korea": "PRK", "north korea": "PRK", "korea": "KOR", "south korea": "KOR",
-  "japan": "JPN", "philippines": "PHL", "indonesia": "IDN", "australia": "AUS", "new zealand": "NZL" };
+  "japan": "JPN", "philippines": "PHL", "indonesia": "IDN", "australia": "AUS", "new zealand": "NZL",
+  "ireland": "IRL", "portugal": "PRT", "netherlands": "NLD", "belgium": "BEL", "switzerland": "CHE", "austria": "AUT", "denmark": "DNK",
+  "norway": "NOR", "sweden": "SWE", "finland": "FIN", "poland": "POL", "czech rep.": "CZE", "czech republic": "CZE", "czechia": "CZE",
+  "hungary": "HUN", "romania": "ROU", "serbia": "SRB", "greece": "GRC", "morocco": "MAR", "algeria": "DZA", "tunisia": "TUN",
+  "senegal": "SEN", "ghana": "GHA", "côte d'ivoire": "CIV", "ivory coast": "CIV", "cameroon": "CMR", "sudan": "SDN", "ethiopia": "ETH",
+  "uganda": "UGA", "rwanda": "RWA", "tanzania": "TZA", "dem. rep. congo": "COD", "angola": "AGO", "zambia": "ZMB", "zimbabwe": "ZWE",
+  "malaysia": "MYS", "singapore": "SGP" };
 
 /* ---------- Map geometry -------------------------------------------------
    The page may only load scripts from a few CDNs, so the world outline comes
@@ -326,6 +366,24 @@ function drawStars() {
   }
 }
 
+/* Day and night: the subsolar point (where the sun is directly overhead) from the current
+   UTC time, using NOAA's low-precision solar formulas (good to a fraction of a degree). */
+function subsolarPoint(date) {
+  const y = date.getUTCFullYear();
+  const dayOfYear = (Date.UTC(y, date.getUTCMonth(), date.getUTCDate()) - Date.UTC(y, 0, 0)) / 864e5;
+  const mins = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+  const g = 2 * Math.PI / 365 * (dayOfYear - 1 + (mins / 60 - 12) / 24);
+  const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
+    + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+  const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const lon = ((-(mins + eqTime - 720) / 4) + 540) % 360 - 180;
+  return [lon, decl * 180 / Math.PI];
+}
+let sun = subsolarPoint(new Date());
+const nightCircle = d3.geoCircle().precision(2);
+function updateSun() { sun = subsolarPoint(new Date()); nightCircle.center([sun[0] + 180, -sun[1]]); }
+updateSun(); setInterval(updateSun, 60000);
+
 const hasNews = c => c.items && c.items.length > 0;
 const viewCentre = () => [-rot[0], -rot[1]];
 const norm180 = a => ((a + 540) % 360) - 180;
@@ -353,8 +411,18 @@ function draw(t) {
     ctx.beginPath(); path(f); ctx.fill(); ctx.shadowBlur = 0;
   });
   ctx.strokeStyle = "rgba(190,230,255,0.38)"; ctx.lineWidth = 0.55; ctx.beginPath(); world.features.forEach(f => path(f)); ctx.stroke();
-  // markers
+  // night side, with soft civil / nautical / astronomical twilight bands
+  ctx.fillStyle = "rgba(1,4,16,0.32)";
+  [90, 96, 102, 108].forEach(r => { ctx.beginPath(); path(nightCircle.radius(180 - r)()); ctx.fill(); });
+  // sun marker at the point where it is directly overhead
   const centre = viewCentre();
+  if (d3.geoDistance(sun, centre) < 1.5) {
+    const [sx, sy] = projection(sun);
+    const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 22);
+    glow.addColorStop(0, "rgba(255,226,140,0.85)"); glow.addColorStop(0.25, "rgba(255,200,90,0.35)"); glow.addColorStop(1, "rgba(255,200,90,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx, sy, 22, 0, 7); ctx.fill();
+  }
+  // markers
   COUNTRIES.forEach(c => {
     if (!hasNews(c) || d3.geoDistance([c.lon, c.lat], centre) > 1.45) return;
     const [x, y] = projection([c.lon, c.lat]);
@@ -478,8 +546,10 @@ cv.addEventListener("pointerup", e => {
   if (downAt && !downAt.moved) {
     const ll = projection.invert([e.clientX, e.clientY]);
     if (ll && d3.geoDistance(ll, viewCentre()) < Math.PI / 2) {
-      const f = world.features.find(f => d3.geoContains(f, ll));
-      const c = f && byIso.get(f.iso);
+      const near = COUNTRIES.filter(hasNews).find(k => d3.geoDistance([k.lon, k.lat], viewCentre()) < 1.45 &&
+        Math.hypot(projection([k.lon, k.lat])[0] - e.clientX, projection([k.lon, k.lat])[1] - e.clientY) < 12);
+      const f = near ? null : world.features.find(f => d3.geoContains(f, ll));
+      const c = near || (f && byIso.get(f.iso));
       if (c && hasNews(c)) flyTo(c);
     }
   }
@@ -493,24 +563,33 @@ document.addEventListener("keydown", e => { if (e.code === "Space" && e.target =
 addEventListener("resize", resize);
 
 /* ---------- Index and ticker ------------------------------------------------- */
-function renderLists() {
-  const withNews = COUNTRIES.filter(hasNews);
+function renderIndex() {
   const idx = document.getElementById("index");
   idx.querySelectorAll(".chip").forEach(n => n.remove());
-  withNews.forEach(c => {
+  COUNTRIES.filter(hasNews).forEach(c => {
     const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.iso = c.iso;
+    b.classList.toggle("on", active.has(c.iso));
     b.innerHTML = `<span class="code">${c.iso}</span>${esc(c.name)}<span class="n">${c.items.length}</span>`;
     b.addEventListener("click", () => flyTo(c)); idx.appendChild(b);
   });
-  const ticks = withNews.flatMap(c => c.items.map(i =>
-    `<span class="tick"><b>${c.iso}</b><a data-iso="${c.iso}" tabindex="0">${esc(i.t)}</a><span class="src">${esc(i.s)}</span></span>`)).join("");
+}
+let tickerDirty = false;
+function renderTicker() {
+  tickerDirty = false;
+  const items = COUNTRIES.filter(hasNews).flatMap(c => c.items.map(i => ({ c, i })));
+  const ticks = items.map(({ c, i }) =>
+    `<span class="tick"><b>${c.iso}</b><a data-iso="${c.iso}" tabindex="0">${esc(i.t)}</a><span class="src">${esc(i.s)}</span></span>`).join("");
   const track = document.getElementById("track");
   track.innerHTML = ticks + ticks;
+  track.style.animationDuration = Math.max(90, items.length * 6) + "s";   // keep reading speed steady as headlines are added
   track.querySelectorAll("a").forEach(a => {
     const go = () => flyTo(byIso.get(a.dataset.iso));
     a.addEventListener("click", go); a.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
   });
 }
+// Rebuilding the ticker restarts its scroll, so live updates refresh it at most once a minute.
+setInterval(() => { if (tickerDirty && !document.querySelector("#ticker:hover")) renderTicker(); }, 60000);
+function renderLists() { renderIndex(); renderTicker(); }
 function refreshCards() { for (const [iso, a] of active) a.el.innerHTML = cardHtml(byIso.get(iso)); }
 
 /* ---------- Clock and live news ----------------------------------------------- */
@@ -522,39 +601,59 @@ modeText.textContent = "Snapshot · " + SNAPSHOT_DATE;
 modeEl.title = "Headlines gathered on " + SNAPSHOT_DATE + ". Host this page yourself to get live headlines.";
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const key = s => String(s || "").toLowerCase().replace(/[^a-z]/g, "");
 function fmtSeen(s) {
   const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(s || ""); if (!m) return "";
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]));
   return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
-async function loadLive() {
-  const list = COUNTRIES.filter(c => c.g);
-  const byKey = new Map(list.map(c => [c.g, c])); byKey.set("russianfederation", byIso.get("RUS"));
-  const fresh = new Map();
-  for (let i = 0; i < list.length; i += 8) {
-    const group = list.slice(i, i + 8);
-    const q = "(" + group.map(c => "sourcecountry:" + c.g).join(" OR ") + ") sourcelang:english";
-    const url = "https://api.gdeltproject.org/api/v2/doc/doc?format=json&mode=artlist&sort=datedesc&timespan=24h&maxrecords=200&query=" + encodeURIComponent(q);
-    const res = await fetch(url);          // throws inside the Claude preview (outside requests are blocked)
-    if (!res.ok) throw new Error("GDELT " + res.status);
-    const data = await res.json();
-    (data.articles || []).forEach(a => {
-      const c = byKey.get(key(a.sourcecountry)); if (!c || !a.title) return;
-      const arr = fresh.get(c.iso) || []; if (arr.length >= 3 || arr.some(x => x.t === a.title)) return;
-      arr.push({ t: a.title, s: a.domain, d: fmtSeen(a.seendate), u: a.url }); fresh.set(c.iso, arr);
-    });
-    if (i + 8 < list.length) await sleep(5500);   // GDELT asks for one request every 5 seconds
-  }
-  if (!fresh.size) throw new Error("no articles");
-  fresh.forEach((items, iso) => { byIso.get(iso).items = items; });
+/* Live mode: one request per country (so small countries are not crowded out by busy ones),
+   starting with the countries about to rotate into view. Each card fills in as its country
+   arrives; a full pass over all countries takes about 6 minutes, then repeats every 15. */
+const REFRESH_MS = 15 * 60 * 1000, GAP_MS = 5200;   // GDELT asks for one request every 5 seconds
+let liveCount = 0;
+async function fetchCountry(c, englishOnly) {
+  const q = "sourcecountry:" + c.g + (englishOnly ? " sourcelang:english" : "");
+  const url = "https://api.gdeltproject.org/api/v2/doc/doc?format=json&mode=artlist&sort=datedesc&timespan=3d&maxrecords=15&query=" + encodeURIComponent(q);
+  const res = await fetch(url);            // throws a TypeError inside the Claude preview (outside requests are blocked)
+  if (!res.ok) throw new Error("GDELT " + res.status);
+  let data; try { data = JSON.parse(await res.text()); } catch (e) { throw new Error("GDELT sent a non-JSON reply"); }
+  const seen = new Set();
+  return (data.articles || []).filter(a => a.title && !seen.has(a.title.toLowerCase()) && seen.add(a.title.toLowerCase()))
+    .slice(0, 3).map(a => ({ t: a.title, s: a.domain, d: fmtSeen(a.seendate), u: a.url }));
+}
+function liveQueue() {
+  const cl = -rot[0];
+  const ahead = c => (norm180(cl - c.lon) + 25 + 360) % 360;   // 0 = just coming into view
+  return COUNTRIES.filter(c => c.g).sort((a, b) => ahead(a) - ahead(b));
+}
+function showLive() {
   modeEl.classList.add("live");
-  modeText.textContent = "Live · updated " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  modeEl.title = "Newest English-language articles from each country's press, via GDELT.";
-  renderLists(); refreshCards();
+  modeText.textContent = "Live · " + liveCount + " countries · " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  modeEl.title = "Newest articles from each country's press, via GDELT. English first, other languages when there are none in English.";
+}
+async function liveCycle() {
+  const started = Date.now(); let fails = 0;
+  for (const c of liveQueue()) {
+    try {
+      let items = await fetchCountry(c, true);
+      if (!items.length) { await sleep(GAP_MS); items = await fetchCountry(c, false); }
+      if (items.length) {
+        const isNew = !c.live; c.items = items; c.live = true; if (isNew) liveCount++;
+        showLive(); renderIndex(); refreshCards(); tickerDirty = true;
+      }
+      fails = 0;
+    } catch (e) {
+      if (e instanceof TypeError && liveCount === 0) throw e;   // network blocked: stay on the snapshot
+      if (++fails >= 4) break;                                  // GDELT unhappy: try again next cycle
+      await sleep(15000);
+    }
+    await sleep(GAP_MS);
+  }
+  renderTicker();
+  setTimeout(() => liveCycle().catch(() => {}), Math.max(60000, REFRESH_MS - (Date.now() - started)));
 }
 async function tryLive() {
-  try { await loadLive(); setTimeout(tryLive, 15 * 60 * 1000); }
+  try { await liveCycle(); }
   catch (e) { console.info("Live news unavailable, showing snapshot.", e.message); }
 }
 
